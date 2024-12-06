@@ -1,0 +1,125 @@
+/* Contenedor principal centrado */
+.container {
+    max-width: 500px;
+    margin: 0 auto;
+    padding: 20px;
+    background-color: #f8f9fa;
+    border-radius: 10px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    text-align: center;
+}
+
+/* Título del formulario */
+.container h2 {
+    font-size: 24px;
+    font-weight: bold;
+    margin-bottom: 20px;
+}
+
+/* Estilos para etiquetas y campos de entrada */
+label {
+    display: block;
+    text-align: left;
+    margin-bottom: 8px;
+    font-weight: 600;
+    color: #333;
+}
+
+input[type="text"],
+input[type="number"] {
+    width: 100%;
+    padding: 10px;
+    margin-bottom: 15px;
+    border-radius: 5px;
+    border: 1px solid #ccc;
+    font-size: 16px;
+}
+
+/* Contenedor para la lista de materiales */
+.materials-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 15px; /* Espacio entre tarjetas */
+    justify-content: center;
+    margin-top: 15px;
+    margin-bottom: 20px;
+}
+
+/* Tarjeta individual de material */
+.material-card {
+    background-color: #28a745;
+    color: white;
+    padding: 15px;
+    border-radius: 8px;
+    width: 120px; /* Tamaño compacto */
+    text-align: center;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: space-between;
+}
+
+/* Checkbox en la tarjeta de material */
+.material-card input[type="checkbox"] {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    transform: scale(1.2);
+    cursor: pointer;
+}
+
+/* Nombre del material en negrita */
+.material-card h3 {
+    font-size: 16px;
+    font-weight: bold;
+    margin: 5px 0 10px; /* Espaciado para el título */
+}
+
+/* Texto adicional dentro de cada tarjeta de material */
+.material-card p {
+    margin: 4px 0;
+    font-size: 14px;
+    line-height: 1.2;
+}
+
+/* Botón de Crear Producto */
+.create-product-button {
+    background-color: #28a745;
+    color: white;
+    padding: 12px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    width: 100%;
+    font-size: 16px;
+    margin-top: 10px;
+}
+
+.create-product-button:hover {
+    background-color: #218838;
+}
+
+/* Botón de Regresar */
+.back-button {
+    background-color: #007bff;
+    color: white;
+    padding: 12px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    width: 100%;
+    font-size: 16px;
+    margin-top: 10px;
+}
+
+.back-button:hover {
+    background-color: #0069d9;
+}
+
+/* Desactivar el botón si está deshabilitado */
+button:disabled {
+    background-color: #aaa;
+    cursor: not-allowed;
+}

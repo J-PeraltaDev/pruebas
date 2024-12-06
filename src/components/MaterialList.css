@@ -1,0 +1,78 @@
+body {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    background-color: #c21313;
+}
+
+/* Contenedor principal */
+.container {
+    padding: 20px;
+    width: 100%; /* Cambia a 100% para ocupar todo el ancho */
+    margin: 0; /* Elimina los márgenes automáticos */
+}
+
+/* Botón de regresar */
+button {
+    display: block;
+    margin: 0 auto 20px;
+    padding: 10px 20px;
+    font-size: 16px;
+    background-color: #007bff;
+    color: rgb(199, 22, 22);
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+}
+
+button:hover {
+    background-color: #0056b3;
+}
+
+/* Grid para los materiales */
+.grid-container {
+    display: grid;
+    gap: 20px;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); /* Cambia el min-width a 300px */
+}
+
+/* Tarjetas de cada material */
+.card {
+    background-color: #18cc30;
+    padding: 15px;
+    border-radius: 8px;
+    box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.1);
+    text-align: center;
+    transition: transform 0.2s ease;
+}
+
+.card:hover {
+    transform: translateY(-5px);
+}
+
+.card h3 {
+    margin: 0 0 10px;
+    font-size: 18px;
+}
+
+.card p {
+    margin: 5px 0;
+    font-size: 14px;
+}
+
+/* Botones dentro de las tarjetas */
+.card button {
+    margin-top: 10px;
+    padding: 8px 15px;
+    font-size: 14px;
+    color: white;
+    background-color: #007bff;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    width: 100%;
+}
+
+.card button:hover {
+    background-color: #0056b3;
+}
