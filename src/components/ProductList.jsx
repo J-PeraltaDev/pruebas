@@ -5,6 +5,14 @@ import { getAuth } from 'firebase/auth';
 import { useNavigate } from 'react-router-dom';
 import './ProductList.css';
 
+const UNIDAD_CONVERSION = {
+    kilogramos: 1000,
+    gramos: 1,
+    litros: 1000,
+    mililitros: 1,
+    unidades: 1,
+};
+
 const ProductList = () => {
     const [products, setProducts] = useState([]);
     const [materials, setMaterials] = useState({});
@@ -26,7 +34,7 @@ const ProductList = () => {
                         .filter(key => data[key].userID === user.uid)
                         .map(key => ({
                             id: key,
-                            ...data[key]
+                            ...data[key],
                         }));
                     setProducts(userProducts);
                 } else {
@@ -57,70 +65,154 @@ const ProductList = () => {
         setEditingMaterials({ ...product.materiales }); // Copiar materiales seleccionados para edición
     };
 
-    const handleMaterialChange = (materialId, newQuantity) => {
-        setEditingMaterials((prev) => ({
-            ...prev,
-            [materialId]: newQuantity === "" ? "" : newQuantity, // Permite valores vacíos sin eliminar el material
-        }));
-    };    
-
-    const handleToggleMaterial = (materialId, isSelected) => {
-        setEditingMaterials((prev) => {
-            if (isSelected) {
-                return { ...prev, [materialId]: prev[materialId] || 1 }; // Mantiene el valor anterior o asigna 1
-            } else {
-                const { [materialId]: _, ...rest } = prev;
-                return rest; // Elimina el material
-            }
-        });
-    };    
-
-    const recalculatePrice = () => {
-        if (editingProduct && editingMaterials) {
-            const totalCost = Object.entries(editingMaterials).reduce((acc, [materialId, cantidadNecesaria]) => {
+    const recalculatePrice = (updatedMaterials = editingMaterials) => {
+        if (editingProduct && updatedMaterials) {
+            let totalCost = 0;
+    
+            Object.entries(updatedMaterials).forEach(([materialId, materialInfo]) => {
                 const material = materials[materialId];
-                if (!material) return acc;
-                const costoPorUnidad = material.costo / material.cantidad;
-                const costoMaterial = costoPorUnidad * cantidadNecesaria;
-                return acc + costoMaterial;
-            }, 0);
-
-            const unitCost = totalCost;
-            const profitMarginDecimal = parseFloat(editingProduct.rentabilidad) / 100;
-            const salePrice = unitCost * (1 + profitMarginDecimal);
-            const totalProfit = (salePrice - unitCost) * parseFloat(editingProduct.ventasAproximadas);
-
+                if (!material) return;
+    
+                const requiredQuantity = parseFloat(materialInfo.cantidadNecesaria);
+                const selectedUnit = materialInfo.unidadSeleccionada;
+    
+                if (
+                    isNaN(requiredQuantity) ||
+                    requiredQuantity <= 0 ||
+                    !selectedUnit ||
+                    !UNIDAD_CONVERSION[selectedUnit] ||
+                    !UNIDAD_CONVERSION[material.unidadMedida]
+                ) {
+                    console.warn(`Datos inválidos para el material: ${materialId}`);
+                    return;
+                }
+    
+                const conversionRate =
+                    UNIDAD_CONVERSION[selectedUnit] /
+                    UNIDAD_CONVERSION[material.unidadMedida];
+    
+                if (conversionRate <= 0 || isNaN(conversionRate)) {
+                    console.error(`Error en la conversión de unidades: ${selectedUnit} -> ${material.unidadMedida}`);
+                    return;
+                }
+    
+                const baseCostPerUnit = material.costo / material.cantidad;
+    
+                console.log(`
+                    Material: ${material.nombre},
+                    Cantidad Necesaria: ${requiredQuantity},
+                    Unidad Seleccionada: ${selectedUnit},
+                    Tasa de Conversión: ${conversionRate},
+                    Costo Base por Unidad: ${baseCostPerUnit}
+                `);
+    
+                totalCost += baseCostPerUnit * requiredQuantity * conversionRate;
+            });
+    
+            console.log(`Costo Total Calculado: ${totalCost}`);
+    
+            const profitMarginDecimal = parseFloat(editingProduct.rentabilidad) / 100 || 0;
+            const salePrice = totalCost * (1 + profitMarginDecimal);
+            const totalProfit =
+                (salePrice - totalCost) * parseFloat(editingProduct.ventasAproximadas || 0);
+    
             setEditingProduct((prev) => ({
                 ...prev,
-                costoUnitario: unitCost.toFixed(2),
+                costoUnitario: totalCost.toFixed(2),
                 precioVenta: salePrice.toFixed(2),
                 gananciaTotal: totalProfit.toFixed(2),
             }));
         }
     };
+    
+    
+    const handleMaterialChange = (materialId, quantity, unit) => {
+        setEditingMaterials((prev) => ({
+            ...prev,
+            [materialId]: { ...prev[materialId], cantidadNecesaria: quantity, unidadSeleccionada: unit },
+        }));
+    };
+    
+    const handleToggleMaterial = (materialId, isSelected) => {
+        setEditingMaterials((prev) => {
+            if (isSelected) {
+                return {
+                    ...prev,
+                    [materialId]: prev[materialId] || {
+                        cantidadNecesaria: "",
+                        unidadSeleccionada: materials[materialId]?.unidadMedida || "",
+                    },
+                };
+            } else {
+                const { [materialId]: _, ...rest } = prev;
+                return rest;
+            }
+        });
+    };    
+
+    const handleUpdateProductField = (field, value) => {
+        const updatedProduct = { ...editingProduct, [field]: value };
+        setEditingProduct(updatedProduct);
+        recalculatePrice();
+    };
 
     const handleUpdate = () => {
-        const auth = getAuth();
-        const user = auth.currentUser;
+        console.log("Datos iniciales de materiales:", materials);
+        console.log("Materiales seleccionados para edición:", editingMaterials);
 
-        if (user && editingProduct) {
-            const productRef = ref(database, `productos/${editingProduct.id}`);
-            update(productRef, {
-                nombre: editingProduct.nombre,
-                ventasAproximadas: editingProduct.ventasAproximadas,
-                rentabilidad: editingProduct.rentabilidad,
-                costoUnitario: editingProduct.costoUnitario,
-                precioVenta: editingProduct.precioVenta,
-                materiales: editingMaterials // Actualizar materiales editados
-            })
-                .then(() => {
-                    alert("Producto actualizado correctamente");
-                    setEditingProduct(null); // Reset editing state
-                    setEditingMaterials({});
-                })
-                .catch((error) => alert("Error al actualizar producto: " + error.message));
+
+        if (!editingProduct || !editingMaterials || !materials) {
+            console.error("Datos incompletos para calcular el producto.");
+            return;
         }
-    };
+    
+        let totalCost = 0;
+    
+        Object.entries(editingMaterials).forEach(([materialId, materialInfo]) => {
+            const material = materials[materialId];
+            if (!material || !materialInfo.cantidadNecesaria || !materialInfo.unidadSeleccionada) {
+                console.warn(`Datos inválidos para el material: ${materialId}`);
+                return;
+            }
+    
+            const conversionRate =
+                UNIDAD_CONVERSION[materialInfo.unidadSeleccionada] /
+                UNIDAD_CONVERSION[material.unidadMedida];
+            const baseCostPerUnit = material.costo / material.cantidad;
+            const requiredQuantity = parseFloat(materialInfo.cantidadNecesaria);
+    
+            if (isNaN(requiredQuantity) || isNaN(baseCostPerUnit) || isNaN(conversionRate)) {
+                console.warn(`Cálculo inválido para material: ${material.nombre}`);
+                return;
+            }
+    
+            totalCost += baseCostPerUnit * requiredQuantity * conversionRate;
+        });
+    
+        const profitMarginDecimal = parseFloat(editingProduct.rentabilidad) / 100 || 0;
+        const salePrice = totalCost * (1 + profitMarginDecimal);
+        const totalProfit =
+            (salePrice - totalCost) * parseFloat(editingProduct.ventasAproximadas || 0);
+    
+        const updatedProduct = {
+            ...editingProduct,
+            costoUnitario: totalCost.toFixed(2),
+            precioVenta: salePrice.toFixed(2),
+            gananciaTotal: totalProfit.toFixed(2),
+        };
+    
+        const productRef = ref(database, `productos/${editingProduct.id}`);
+        update(productRef, {
+            ...updatedProduct,
+            materiales: editingMaterials,
+        })
+            .then(() => {
+                alert("Producto actualizado correctamente");
+                setEditingProduct(null); // Reset editing state
+                setEditingMaterials({});
+            })
+            .catch((error) => alert("Error al actualizar producto: " + error.message));
+    };    
 
     return (
         <div className="container">
@@ -137,6 +229,7 @@ const ProductList = () => {
                             <p>Rentabilidad: {product.rentabilidad}%</p>
                             <p>Costo Unitario: ${product.costoUnitario}</p>
                             <p>Precio de Venta: ${product.precioVenta}</p>
+                            <p>Ganancia Total Estimada: ${product.gananciaTotal}</p>
                             <button onClick={() => handleEdit(product)}>Editar</button>
                             <button onClick={() => handleDelete(product.id)}>Eliminar</button>
                         </div>
@@ -151,23 +244,17 @@ const ProductList = () => {
                     <input
                         type="text"
                         value={editingProduct.nombre}
-                        onChange={(e) => setEditingProduct({ ...editingProduct, nombre: e.target.value })}
+                        onChange={(e) => handleUpdateProductField("nombre", e.target.value)}
                     />
                     <input
                         type="number"
                         value={editingProduct.ventasAproximadas}
-                        onChange={(e) => {
-                            setEditingProduct({ ...editingProduct, ventasAproximadas: e.target.value });
-                            recalculatePrice();
-                        }}
+                        onChange={(e) => handleUpdateProductField("ventasAproximadas", e.target.value)}
                     />
                     <input
                         type="number"
                         value={editingProduct.rentabilidad}
-                        onChange={(e) => {
-                            setEditingProduct({ ...editingProduct, rentabilidad: e.target.value });
-                            recalculatePrice();
-                        }}
+                        onChange={(e) => handleUpdateProductField("rentabilidad", e.target.value)}
                     />
                     <h3>Materiales</h3>
                     {Object.entries(materials).map(([materialId, material]) => (
@@ -178,31 +265,38 @@ const ProductList = () => {
                                 onChange={(e) => handleToggleMaterial(materialId, e.target.checked)}
                             />
                             <span>{material.nombre}</span>
-                            {/* Mostrar el input solo si el checkbox está activo */}
-                            {editingMaterials[materialId] !== undefined && (
-                                <input
-                                    type="number"
-                                    value={editingMaterials[materialId]}
-                                    onChange={(e) => {
-                                        const value = e.target.value === "" ? "" : parseFloat(e.target.value);
-                                        handleMaterialChange(materialId, value);
-                                    }}
-                                    min="0" // Evitar valores negativos
-                                    placeholder="Cantidad"
-                                />
+                            {editingMaterials[materialId] && (
+                                <>
+                                    <input
+                                        type="number"
+                                        value={editingMaterials[materialId]?.cantidadNecesaria || ''}
+                                        onChange={(e) => handleMaterialChange(
+                                            materialId,
+                                            e.target.value,
+                                            editingMaterials[materialId]?.unidadSeleccionada
+                                        )}
+                                        placeholder="Cantidad"
+                                    />
+                                    <select
+                                        value={editingMaterials[materialId]?.unidadSeleccionada || ''}
+                                        onChange={(e) => handleMaterialChange(
+                                            materialId,
+                                            editingMaterials[materialId]?.cantidadNecesaria,
+                                            e.target.value
+                                        )}
+                                    >
+                                        {Object.keys(UNIDAD_CONVERSION).map((unidad) => (
+                                            <option key={unidad} value={unidad}>
+                                                {unidad}
+                                            </option>
+                                        ))}
+                                    </select>
+                                </>
                             )}
                         </div>
                     ))}
-                    <p>Costo Unitario: ${editingProduct.costoUnitario}</p>
-                    <p>Precio de Venta: ${editingProduct.precioVenta}</p>
-                    <p>Ganancia Total Estimada: ${editingProduct.gananciaTotal}</p>
                     <button onClick={handleUpdate}>Guardar</button>
-                    <button onClick={() => {
-                        setEditingProduct(null);
-                        setEditingMaterials({});
-                    }}>
-                        Cancelar
-                    </button>
+                    <button onClick={() => setEditingProduct(null)}>Cancelar</button>
                 </div>
             )}
         </div>

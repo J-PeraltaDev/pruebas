@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { database } from "../firebaseConfig";  // Esto se mantiene si ya lo tienes configurado
-import { getDatabase, ref, push, set, onValue } from "firebase/database";  // Importa todo correctamente
+import { database } from "../firebaseConfig";
+import { ref, push, set, onValue } from "firebase/database";
 import { getAuth, onAuthStateChanged } from 'firebase/auth';
 import { useNavigate } from 'react-router-dom';
 
@@ -9,119 +9,55 @@ const MaterialForm = () => {
         nombre: "",
         costo: "",
         cantidad: "",
-        unidadMedida: "",
+        unidadMedida: "kilogramos",
     });
     const [user, setUser] = useState(null);
-    const [materials, setMaterials] = useState([]); // Estado para guardar los materiales del usuario
+    const [materials, setMaterials] = useState([]); 
     const navigate = useNavigate();
 
-    const unidadesMedida = ["kilogramos", "litros", "mililitros", "gramos", "unidades", "no se"];
+    const unidadesMedida = ["kilogramos", "gramos", "litros", "mililitros", "unidades"];
 
     useEffect(() => {
         const auth = getAuth();
         onAuthStateChanged(auth, (currentUser) => {
-            if (currentUser) {
-                setUser(currentUser);
-            } else {
-                setUser(null);
-            }
+            setUser(currentUser || null);
         });
     }, []);
 
-    // con este codigo se guarda el id de materiales en users tambien
-    // const handleSaveMaterial = (e) => {
-    //     e.preventDefault();
-    
-    //     if (!user) {
-    //         alert("Usuario no autenticado.");
-    //         return;
-    //     }
-    
-    //     // Referencia a la base de datos de materiales fuera de la carpeta de usuarios
-    //     const materialsRef = ref(database, 'materiales');
-    
-    //     // Crear un objeto para el nuevo material con el userID
-    //     const newMaterial = {
-    //         nombre: material.nombre,
-    //         cantidad: material.cantidad,
-    //         costo: material.costo,
-    //         unidadMedida: material.unidadMedida,
-    //         userID: user.uid // Asociamos el material con el ID del usuario
-    //     };
-    
-    //     // Usamos push para generar un ID único para el material
-    //     push(materialsRef, newMaterial)
-    //         .then((snapshot) => {
-    //             const materialID = snapshot.key; // ID generado para el material
-    
-    //             // Guardamos el material con su estructura en la carpeta `materiales`
-    //             const materialRef = ref(database, `materiales/${materialID}`);
-    //             set(materialRef, newMaterial)
-    //                 .then(() => {
-    //                     // También asociamos este material con el usuario
-    //                     const userMaterialsRef = ref(database, `users/${user.uid}/materiales/${materialID}`);
-    //                     set(userMaterialsRef, true)
-    //                         .then(() => {
-    //                             alert("Material guardado correctamente");
-    //                             setMaterial({ nombre: "", costo: "", cantidad: "", unidadMedida: "" });
-    //                         })
-    //                         .catch((error) => {
-    //                             alert("Error al guardar la referencia del material para el usuario: " + error.message);
-    //                         });
-    //                 })
-    //                 .catch((error) => {
-    //                     alert("Error al guardar el material: " + error.message);
-    //                 });
-    //         })
-    //         .catch((error) => {
-    //             alert("Error al guardar el material en la base de datos: " + error.message);
-    //         });
-    // };
-
-
     const handleSaveMaterial = (e) => {
         e.preventDefault();
-    
+
         if (!user) {
             alert("Usuario no autenticado.");
             return;
         }
-    
-        // Referencia a la base de datos de materiales fuera de la carpeta de usuarios
+
+        const { nombre, costo, cantidad, unidadMedida } = material;
+
+        // Validaciones
+        if (!nombre || isNaN(costo) || isNaN(cantidad) || costo <= 0 || cantidad <= 0 || !unidadMedida) {
+            alert("Por favor, completa todos los campos con valores válidos.");
+            return;
+        }
+
         const materialsRef = ref(database, 'materiales');
-    
-        // Crear un objeto para el nuevo material con el userID
         const newMaterial = {
-            nombre: material.nombre,
-            cantidad: material.cantidad,
-            costo: material.costo,
-            unidadMedida: material.unidadMedida,
-            userID: user.uid // Asociamos el material con el ID del usuario
+            nombre,
+            costo: parseFloat(costo),
+            cantidad: parseFloat(cantidad),
+            unidadMedida,
+            userID: user.uid,
         };
-    
-        // Usamos push para generar un ID único para el material
+
         push(materialsRef, newMaterial)
-            .then((snapshot) => {
-                const materialID = snapshot.key; // ID generado para el material
-    
-                // Guardamos el material con su estructura en la carpeta `materiales`
-                const materialRef = ref(database, `materiales/${materialID}`);
-                set(materialRef, newMaterial)
-                    .then(() => {
-                        alert("Material guardado correctamente");
-                        setMaterial({ nombre: "", costo: "", cantidad: "", unidadMedida: "" });
-                    })
-                    .catch((error) => {
-                        alert("Error al guardar el material: " + error.message);
-                    });
+            .then(() => {
+                alert("Material guardado correctamente.");
+                setMaterial({ nombre: "", costo: "", cantidad: "", unidadMedida: "kilogramos" });
             })
             .catch((error) => {
-                alert("Error al guardar el material en la base de datos: " + error.message);
+                alert("Error al guardar el material: " + error.message);
             });
     };
-    
-    
-    
 
     const handleViewMaterials = () => {
         if (!user) {
@@ -130,13 +66,12 @@ const MaterialForm = () => {
         }
 
         const materialsRef = ref(database, `users/${user.uid}/materiales`);
-
         onValue(materialsRef, (snapshot) => {
             const data = snapshot.val();
             if (data) {
                 const materialsArray = Object.keys(data).map((key) => ({
                     id: key,
-                    ...data[key]
+                    ...data[key],
                 }));
                 setMaterials(materialsArray);
             } else {
@@ -190,7 +125,6 @@ const MaterialForm = () => {
                         onChange={handleChange}
                         required
                     >
-                        <option value="">Selecciona una unidad</option>
                         {unidadesMedida.map((unidad) => (
                             <option key={unidad} value={unidad}>
                                 {unidad}

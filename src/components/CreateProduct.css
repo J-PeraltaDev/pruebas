@@ -1,6 +1,6 @@
-/* Contenedor principal centrado */
+/* Contenedor principal */
 .container {
-    max-width: 500px;
+    max-width: 800px;
     margin: 0 auto;
     padding: 20px;
     background-color: #f8f9fa;
@@ -35,56 +35,83 @@ input[type="number"] {
     font-size: 16px;
 }
 
-/* Contenedor para la lista de materiales */
-.materials-list {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 15px; /* Espacio entre tarjetas */
-    justify-content: center;
-    margin-top: 15px;
-    margin-bottom: 20px;
+/* Cuadrícula de tarjetas */
+.materials-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 20px;
+    margin-top: 20px;
 }
 
-/* Tarjeta individual de material */
+/* Tarjeta de material */
 .material-card {
-    background-color: #28a745;
-    color: white;
-    padding: 15px;
-    border-radius: 8px;
-    width: 120px; /* Tamaño compacto */
-    text-align: center;
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
     position: relative;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    padding: 16px;
+    text-align: center;
+    background-color: #ffffff;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    height: 300px;
     display: flex;
     flex-direction: column;
-    align-items: center;
     justify-content: space-between;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
-/* Checkbox en la tarjeta de material */
-.material-card input[type="checkbox"] {
+.material-card:hover {
+    transform: scale(1.05);
+    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.2);
+}
+
+.material-card.selected {
+    border: 2px solid #4CAF50;
+    background-color: #e8f5e9;
+}
+
+/* Checkbox separado */
+.checkbox-container {
     position: absolute;
     top: 10px;
-    left: 10px;
-    transform: scale(1.2);
+    right: 10px;
+}
+
+.checkbox-container input[type="checkbox"] {
+    transform: scale(1.3);
     cursor: pointer;
 }
 
-/* Nombre del material en negrita */
-.material-card h3 {
-    font-size: 16px;
+/* Información del material */
+.material-info h4 {
+    font-size: 18px;
     font-weight: bold;
-    margin: 5px 0 10px; /* Espaciado para el título */
+    color: #333;
+    margin-bottom: 10px;
 }
 
-/* Texto adicional dentro de cada tarjeta de material */
-.material-card p {
-    margin: 4px 0;
+.material-info p {
     font-size: 14px;
-    line-height: 1.2;
+    color: #666;
+    margin: 4px 0;
 }
 
-/* Botón de Crear Producto */
+/* Controles de entrada */
+.material-controls {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.material-controls input,
+.material-controls select {
+    width: 100%;
+    padding: 8px;
+    font-size: 14px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+}
+
+/* Botón Crear Producto */
 .create-product-button {
     background-color: #28a745;
     color: white;
@@ -94,14 +121,14 @@ input[type="number"] {
     cursor: pointer;
     width: 100%;
     font-size: 16px;
-    margin-top: 10px;
+    margin-top: 20px;
 }
 
 .create-product-button:hover {
     background-color: #218838;
 }
 
-/* Botón de Regresar */
+/* Botón Regresar */
 .back-button {
     background-color: #007bff;
     color: white;
@@ -118,7 +145,7 @@ input[type="number"] {
     background-color: #0069d9;
 }
 
-/* Desactivar el botón si está deshabilitado */
+/* Deshabilitar botones */
 button:disabled {
     background-color: #aaa;
     cursor: not-allowed;

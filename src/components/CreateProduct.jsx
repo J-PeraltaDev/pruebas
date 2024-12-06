@@ -3,6 +3,15 @@ import { database } from "../firebaseConfig";
 import { ref, push, onValue } from "firebase/database";
 import { getAuth } from 'firebase/auth';
 import { useNavigate } from 'react-router-dom';
+import './CreateProduct.css';
+
+const UNIDAD_CONVERSION = {
+    kilogramos: 1000,
+    gramos: 1,
+    litros: 1000,
+    mililitros: 1,
+    unidades: 1,
+};
 
 const CreateProduct = () => {
     const [materials, setMaterials] = useState([]);
@@ -35,17 +44,16 @@ const CreateProduct = () => {
         }
     }, []);
 
-    const handleSelectMaterial = (material, isChecked, quantity = '') => {
+    const handleSelectMaterial = (material, isChecked, quantity = '', unit = '') => {
         setSelectedMaterials(prev => {
             if (!isChecked) {
-                const { [material.id]: _, ...rest } = prev;  // Remove the material from the selected materials
+                const { [material.id]: _, ...rest } = prev;
                 return rest;
             }
 
-            // No immediate conversion to number, handle it as string to allow for decimal input
             return {
                 ...prev,
-                [material.id]: { ...material, cantidadNecesaria: quantity }
+                [material.id]: { ...material, cantidadNecesaria: quantity, unidadSeleccionada: unit }
             };
         });
     };
@@ -53,12 +61,12 @@ const CreateProduct = () => {
     const handleCreateProduct = () => {
         const auth = getAuth();
         const user = auth.currentUser;
-    
+
         if (!user) {
             alert("Usuario no autenticado");
             return;
         }
-    
+
         if (Object.keys(selectedMaterials).length === 0) {
             alert("Por favor selecciona al menos un material para crear el producto y especifica las cantidades.");
             return;
@@ -67,37 +75,35 @@ const CreateProduct = () => {
             alert("Por favor completa todos los campos.");
             return;
         }
-    
-        // Calcular el costo total ajustado para fabricar una unidad del producto
+
         const totalCost = Object.entries(selectedMaterials).reduce((acc, [materialId, materialInfo]) => {
-            const material = materials.find((m) => m.id === materialId); // Buscar información del material
-            if (!material) return acc; // Si el material no está disponible, lo ignoramos
-    
-            // Convertir valores a flotantes para evitar problemas
-            const costoPorUnidad = parseFloat(material.costo) / parseFloat(material.cantidad); // Costo por unidad del material
-            const cantidadNecesaria = parseFloat(materialInfo.cantidadNecesaria || 0); // Cantidad necesaria para el producto
-    
-            if (isNaN(costoPorUnidad) || isNaN(cantidadNecesaria)) {
+            const material = materials.find((m) => m.id === materialId);
+            if (!material) return acc;
+
+            const conversionRate =
+                UNIDAD_CONVERSION[materialInfo.unidadSeleccionada] /
+                UNIDAD_CONVERSION[material.unidadMedida];
+            const baseCostPerUnit = parseFloat(material.costo) / parseFloat(material.cantidad);
+            const requiredQuantity = parseFloat(materialInfo.cantidadNecesaria || 0) * conversionRate;
+
+            if (isNaN(baseCostPerUnit) || isNaN(requiredQuantity)) {
                 console.error("Error en los datos del material:", material, materialInfo);
                 return acc;
             }
-    
-            const costoMaterial = costoPorUnidad * cantidadNecesaria; // Costo proporcional del material
-            return acc + costoMaterial;
+
+            return acc + baseCostPerUnit * requiredQuantity;
         }, 0);
-    
-        // Costo unitario y precio de venta
+
         const unitCost = totalCost;
         const profitMarginDecimal = parseFloat(profitMargin) / 100;
         const salePrice = unitCost * (1 + profitMarginDecimal);
-    
-        // Validar cálculos
+
         if (isNaN(unitCost) || isNaN(salePrice)) {
             console.error("Error en los cálculos de costo o precio:", { unitCost, salePrice });
             alert("Error en los cálculos, revisa los datos ingresados.");
             return;
         }
-    
+
         const newProduct = {
             nombre: productName,
             ventasAproximadas: parseFloat(approxSales),
@@ -108,7 +114,7 @@ const CreateProduct = () => {
             userID: user.uid,
             materiales: selectedMaterials,
         };
-    
+
         const productsRef = ref(database, 'productos');
         push(productsRef, newProduct)
             .then(() => {
@@ -123,7 +129,7 @@ const CreateProduct = () => {
                 console.error("Error al guardar el producto en Firebase:", error);
                 alert("Hubo un error al crear el producto. Inténtalo nuevamente.");
             });
-    };                
+    };
 
     return (
         <div className="container">
@@ -155,25 +161,67 @@ const CreateProduct = () => {
                     required
                 />
             </label>
-            <p>Selecciona los materiales necesarios para la fabricación de tu producto:</p>
-            <div className="materials-list">
+            <p>Selecciona los materiales necesarios para la fabricación de UNA UNIDAD de tu producto:</p>
+            <div className="materials-grid">
                 {materials.map((material) => (
-                    <div key={material.id} className="material-card">
-                        <input
-                            type="checkbox"
-                            onChange={(e) => handleSelectMaterial(material, e.target.checked, selectedMaterials[material.id]?.cantidadNecesaria || '')}
-                            checked={!!selectedMaterials[material.id]}
-                        />
-                        <label>{material.nombre} - {material.cantidad} {material.unidadMedida}</label>
-                        {selectedMaterials[material.id] && (
+                    <div
+                        key={material.id}
+                        className={`material-card ${selectedMaterials[material.id] ? "selected" : ""}`}
+                    >
+                        <div className="checkbox-container">
                             <input
-                                type="text"
-                                min="0"
-                                step="0.01"  // Allow finer control for decimals
-                                value={selectedMaterials[material.id]?.cantidadNecesaria || ''}
-                                onChange={(e) => handleSelectMaterial(material, true, e.target.value)}
-                                onFocus={(e) => e.target.select()}
+                                type="checkbox"
+                                onChange={(e) =>
+                                    handleSelectMaterial(
+                                        material,
+                                        e.target.checked,
+                                        selectedMaterials[material.id]?.cantidadNecesaria || '',
+                                        selectedMaterials[material.id]?.unidadSeleccionada || ''
+                                    )
+                                }
+                                checked={!!selectedMaterials[material.id]}
                             />
+                        </div>
+                        <div className="material-info">
+                            <h4>{material.nombre}</h4>
+                            <p>Costo: ${material.costo}</p>
+                            <p>Cantidad: {material.cantidad} {material.unidadMedida}</p>
+                        </div>
+                        {selectedMaterials[material.id] && (
+                            <div className="material-controls">
+                                <input
+                                    type="number"
+                                    min="0"
+                                    step="0.01"
+                                    value={selectedMaterials[material.id]?.cantidadNecesaria || ''}
+                                    placeholder="Cantidad"
+                                    onChange={(e) =>
+                                        handleSelectMaterial(
+                                            material,
+                                            true,
+                                            e.target.value,
+                                            selectedMaterials[material.id]?.unidadSeleccionada || ''
+                                        )
+                                    }
+                                />
+                                <select
+                                    value={selectedMaterials[material.id]?.unidadSeleccionada || ''}
+                                    onChange={(e) =>
+                                        handleSelectMaterial(
+                                            material,
+                                            true,
+                                            selectedMaterials[material.id]?.cantidadNecesaria || '',
+                                            e.target.value
+                                        )
+                                    }
+                                >
+                                    {Object.keys(UNIDAD_CONVERSION).map((unidad) => (
+                                        <option key={unidad} value={unidad}>
+                                            {unidad}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
                         )}
                     </div>
                 ))}
@@ -183,9 +231,6 @@ const CreateProduct = () => {
             </button>
             <button onClick={() => navigate("/home")} className="back-button">
                 Regresar
-            </button>
-            <button onClick={() => navigate("/productList")} className="view-products-button">
-                Ver Productos
             </button>
         </div>
     );
